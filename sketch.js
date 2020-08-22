@@ -1,118 +1,140 @@
-//creating a webcam sketch with Leibniz Formula for Pi 
+let video;
+let poseNet;
+let poses = [];
+let song, fft, spectrum, waveform, cnv, freqHigh, freqLow;
+let noseX, noseY, leftWristX, leftWristY, rightWristX, rightWristY, rightHipX, rightHipY;
+let zoffVal = 0.2;
 
-// in solidraity with Beirut, this is a performance for Resilience 2032 on Aug. 22nd 2 PM ET
-// Performer/Musician/Coder: Yiting Liu 
-// Contact: Instagram DM @yliu.designs
-
-//Leibniz Formula for Pi tutorial: https://thecodingtrain.com/CodingChallenges/140-leibniz-formula-pi.html
-// creating visuals and music - frequency 
-
-let pi = 4;
-let history = [];
-let iterations = 0;
-let spacing = 2;
-let polySynth;
-let minY = 2;
-let maxY = 4;
-let x, y;
-let historySize;
-
-//read the sound file and change different elements - thickness of the lines
-
-// use webcam to decide the position of the lines and gradient of the background 
-
-let song;
-let cnv;
-let fft, spectrum, waveform;
-
-function preload() {
-  song = loadSound('future of beirut.mp3');
-}
 
 function setup() {
-  cnv = createCanvas(400, 400);
+  cnv = createCanvas(640, 480);
+  video = createCapture(VIDEO);
+  video.size(width, height);
+
+  poseNet = ml5.poseNet(video, modelReady);
+
+  poseNet.on('pose', function (results) {
+    poses = results;
+  
+  });
+  // video.hide();
 
   let playBtn = createButton('Play');
   playBtn.mousePressed(playsound);
-  historySize = createSlider(20, 100, 30, 2);
-  createDiv('size').child(historySize);
+
 
   fft = new p5.FFT();
   song.amp(0.2);
 
 }
 
+function modelReady() {
+  console.log('Model Loaded');
+}
+
+function preload() {
+  song = loadSound('future of beirut.mp3');
+}
+
 function playsound() {
   if (song.isPlaying()) {
-    // .isPlaying() returns a boolean
+
     song.stop();
-    background(255, 0, 0);
   } else {
     song.play();
-    background(0, 255, 0);
+
   }
 }
 
 function draw() {
+
+  // image(video, 0, 0, width, height);
+  background('rgba(173,216,230, 0.2)');
+
   spectrum = fft.analyze();
+  freqLow = min(spectrum);
+  freqHigh = max(spectrum);
 
-  // console.log(spectrum,'spectrum');
+  drawKeypoints();
+  drawPolarPerlinNoise(freqHigh, freqLow, noseX, noseY);
+  drawPolarPerlinNoise(freqHigh*2, freqLow, leftWristX, leftWristY);
+  drawPolarPerlinNoise(freqHigh/2, freqLow, rightWristX, rightWristY);
 
-  let bgCl;
-  for (let i = 0; i < spectrum.length; i++) {
-    bgCl = map(spectrum[i], 0, 1023, 0, 255);
-    console.log(bgCl);
 
+}
+
+function drawKeypoints() {
+
+  for (let i = 0; i < poses.length; i++) {
+
+    let pose = poses[i].pose;
+    for (let j = 0; j < pose.keypoints.length; j++) {
+      let keypoint = pose.keypoints[j];
+
+      //draw interactive shapes - lines and bubbles 
+      //background color is within the blue range 
+
+      if (keypoint.score > 0.2 && keypoint.part == "nose") {
+        noseX = keypoint.position.x;
+        noseY = keypoint.position.y;
+      }
+
+
+      if (keypoint.score > 0.2 && keypoint.part == "leftWrist") {
+        leftWristX = keypoint.position.x;
+        leftWristY = keypoint.position.y;
+      }
+
+      if (keypoint.score > 0.2 && keypoint.part == "rightWrist") {
+
+        rightWristX = keypoint.position.x;
+        rightWristY = keypoint.position.y;
+      }
+
+
+      if (keypoint.score > 0.2 && keypoint.part == "rightHip") {
+
+        rightHipX = keypoint.position.x;
+        rightHipY = keypoint.position.y;
+      }
+
+
+
+
+    }
   }
+}
 
-  translate(width / 2, height / 2);
-  // background('#ffc922');
-  background(bgCl);
-  let den = iterations * 2 + 3;
-  if (iterations % 2 == 0) {
-    pi -= (4 / den);
-  } else {
-    pi += (4 / den);
-  }
+
+function drawPolarPerlinNoise(freqHigh, freqLow, centerX, centerY) {
+
+  aVal =( freqHigh-freqLow)/1024;
+  console.log(aVal);
+    noiseMax = 50;
+  zoffVal = 0.01;
+  zoff = 0.1;
+  range = freqHigh - freqLow;
+
+  let xoff, yoff;
+
   stroke(255);
-  strokeWeight(iterations / den * pi)
+  strokeWeight(0.5);
+  translate(centerX, centerY);
+
   noFill();
 
-  let r, a;
-
-
-  if (history.length > historySize.value()) {
-
-    // history.shift();
-    history.splice(history[historySize.value()]);
-
-  } else {
-    history.push(pi);
-
-  }
-
-  rotate(a);
-
   beginShape();
-  for (let i = 0; i < historySize.value(); i++) {
+  for (let a = 0; a < TWO_PI; a += aVal) {
 
-    r = i * spacing;
-    a = map(history[i], minY, maxY, 360, 0);
-    x = r * cos(a);
-    y = r * sin(a);
+    xoff = map(cos(a), -1, 1, 0, noiseMax);
+    yoff = map(sin(a), -1, 1, 0, noiseMax);
 
+    let r = map(noise(xoff, yoff, zoff), 0, 1, 0, range);
+    let x = r * cos(a);
+    let y = r * sin(a);
     vertex(x, y);
 
   }
-
-  // playSynth(a);
-
-  endShape();
-
-
-  noStroke()
-  // fill(bgCl, 0, 0);
-  circle(x, y, x);
-  iterations++;
-
+  endShape(CLOSE);
+  zoff += zoffVal;
 }
