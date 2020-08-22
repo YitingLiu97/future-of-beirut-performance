@@ -8,7 +8,7 @@ let videoCheck,divVid;
 
 
 function setup() {
-  cnv = createCanvas(windowWidth*0.5, windowHeight*0.4);
+  cnv = createCanvas(windowWidth*0.7, windowHeight*0.4);
 
   video = createCapture(VIDEO);
   video.size(width, height);
