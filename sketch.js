@@ -4,10 +4,12 @@ let poses = [];
 let song, fft, spectrum, waveform, cnv, freqHigh, freqLow;
 let noseX, noseY, leftWristX, leftWristY, rightWristX, rightWristY, rightHipX, rightHipY;
 let zoffVal = 0.2;
+let videoCheck,divVid;
 
 
 function setup() {
-  cnv = createCanvas(640, 480);
+  cnv = createCanvas(windowWidth*0.5, windowHeight*0.4);
+
   video = createCapture(VIDEO);
   video.size(width, height);
 
@@ -15,17 +17,34 @@ function setup() {
 
   poseNet.on('pose', function (results) {
     poses = results;
-  
+
   });
-  // video.hide();
+
+   videoCheck = createCheckbox('video',false);
+  videoCheck.changed(playVideo);
+
+  video.hide();
 
   let playBtn = createButton('Play');
   playBtn.mousePressed(playsound);
 
+  divVid = createDiv();
+divVid.id('divVid')
+  divVid.child(video);
+  divVid.child(playBtn);
+  divVid.child(videoCheck);
 
   fft = new p5.FFT();
   song.amp(0.2);
 
+}
+
+function playVideo(){
+  if (this.checked()){
+    video.show();
+  }else{
+    video.hide();
+  }
 }
 
 function modelReady() {
@@ -51,15 +70,27 @@ function draw() {
   // image(video, 0, 0, width, height);
   background('rgba(173,216,230, 0.2)');
 
+
   spectrum = fft.analyze();
   freqLow = min(spectrum);
   freqHigh = max(spectrum);
 
   drawKeypoints();
-  drawPolarPerlinNoise(freqHigh, freqLow, noseX, noseY);
-  drawPolarPerlinNoise(freqHigh*2, freqLow, leftWristX, leftWristY);
-  drawPolarPerlinNoise(freqHigh/2, freqLow, rightWristX, rightWristY);
+  drawLines(rightWristX, rightWristY);
+  drawLines(leftWristX, leftWristY);
 
+  drawPolarPerlinNoise(freqHigh, freqLow, noseX, noseY, 0.08);
+
+
+
+
+
+}
+
+function drawLines(centerX, centerY) {
+  fill('rgba(173,200,255, 0.5)');
+  noStroke();
+  ellipse(centerX, centerY, 20);
 
 }
 
@@ -98,29 +129,27 @@ function drawKeypoints() {
         rightHipY = keypoint.position.y;
       }
 
-
-
-
     }
   }
 }
 
 
-function drawPolarPerlinNoise(freqHigh, freqLow, centerX, centerY) {
+function drawPolarPerlinNoise(freqHigh, freqLow, centerX, centerY, aVal) {
 
-  aVal =( freqHigh-freqLow)/1024;
-  console.log(aVal);
-    noiseMax = 50;
+
+  // aVal = 0.5;
+
+  noiseMax = 100;
   zoffVal = 0.01;
-  zoff = 0.1;
+  zoff = 0.01;
   range = freqHigh - freqLow;
 
   let xoff, yoff;
 
-  stroke(255);
-  strokeWeight(0.5);
-  translate(centerX, centerY);
 
+  stroke(255);
+  strokeWeight(zoff * range / 6);
+  translate(centerX, centerY);
   noFill();
 
   beginShape();
@@ -132,8 +161,9 @@ function drawPolarPerlinNoise(freqHigh, freqLow, centerX, centerY) {
     let r = map(noise(xoff, yoff, zoff), 0, 1, 0, range);
     let x = r * cos(a);
     let y = r * sin(a);
-    vertex(x, y);
+    // vertex(x, y);
 
+    ellipse(x, y, r / 2);
   }
   endShape(CLOSE);
   zoff += zoffVal;
